@@ -2,3 +2,5 @@
 /* Keep Korean words intact and prevent bottom navigation wrapping at 320px. */
 button,label,h1,h2,h3{word-break:keep-all;overflow-wrap:break-word}
 #nav button{padding:8px 5px;white-space:nowrap}
+/* Reports remain readable on narrow phones and in shared text. */
+.report-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}

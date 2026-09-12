@@ -1,8 +1,8 @@
 // App shell ONLY. This file must never access IndexedDB or localStorage.
-const CACHE_VERSION='app-shell-2';
+const CACHE_VERSION='app-shell-3';
 const PREFIX='kovea-shell:';
 const CACHE=PREFIX+CACHE_VERSION;
-const ASSETS=['./','./index.html','./crypto-utils.js','./app.js','./db.js','./schema.js','./progression.js','./styles.css','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const ASSETS=['./','./index.html','./crypto-utils.js','./app.js','./db.js','./schema.js','./reports.js','./progression.js','./styles.css','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));});
 // No automatic skipWaiting or clients.claim: old open tabs retain their worker.
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE')self.skipWaiting();if(event.data?.type==='VERSION')event.ports[0]?.postMessage({cacheVersion:CACHE_VERSION});});

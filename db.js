@@ -1,6 +1,7 @@
 import {uuid,sha256} from './crypto-utils.js';
 import {APP_VERSION,DATA_SCHEMA_VERSION,baseline,replay} from './progression.js';
 import {validate,migrate} from './schema.js';
+import {buildReports} from './reports.js';
 // Stable names: NEVER derive the database name/version from APP_VERSION.
 export const DB_NAME='kovea-workout-ledger';
 const MARKER='kovea-workout-used',MIRROR='kovea-workout-emergency';
@@ -43,6 +44,7 @@ export class Ledger{
  async initialize(){if(this.recovery||this.record)throw new Error('초기화가 허용되지 않습니다.');const p={schemaVersion:DATA_SCHEMA_VERSION,baseline:baseline(),events:[]};await this.write(p,'최초 설정',null);return p;}
  async write(payload,reason,expected=this.record?.revision??null,allowRecovery=false,clearDraft=false,expectedContent=undefined){
  if(this.recovery&&!allowRecovery)throw new RecoveryError('복구 모드에서는 일반 저장이 중지됩니다.');validate(payload);
+ payload={...payload,reports:buildReports(payload)};
  let before;
  try{before=await this.readRoot();if(!allowRecovery){if(before)await verify(before);else if(expected!==null)throw new RecoveryError('저장 직전 원본 누락 감지');}}
  catch(e){this.recovery=true;this.error=e.message;throw new RecoveryError(e.message);}

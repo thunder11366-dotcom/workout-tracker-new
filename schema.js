@@ -4,11 +4,11 @@ const obj=x=>x&&typeof x==='object'&&!Array.isArray(x);
 const num=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
 const str=(x,max=20000)=>typeof x==='string'&&x.length<=max;
 const date=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x;
-function actual(a){
+function actual(a,rirOptional=false){
  if(!obj(a)||typeof a.done!=='boolean'||typeof a.technique!=='boolean'||!str(a.note))fail('실제 세트 형식');
  for(const [k,max] of [['weight',2000],['reps',1000],['rir',10]])if(a[k]!==null&&!num(a[k],0,max))fail(`세트 ${k}`);
  if(a.reps!==null&&!Number.isInteger(a.reps))fail('반복수는 정수');
- if(a.done&&['weight','reps','rir'].some(k=>a[k]===null))fail('완료 세트의 중량·반복·RIR 누락');
+ if(a.done&&(rirOptional?['weight','reps']:['weight','reps','rir']).some(k=>a[k]===null))fail('완료 세트의 중량·반복·RIR 누락');
 }
 export function validate(p){
  if(!obj(p)||p.schemaVersion!==DATA_SCHEMA_VERSION)fail('지원하지 않는 schema; 원본을 보관하고 호환 버전에서 복구하세요');
@@ -33,7 +33,7 @@ export function validate(p){
  const keys=new Set();
  for(const r of e.sets){
  if(!str(r.key,50)||keys.has(r.key)||!str(r.name,200)||!str(r.purpose,1000)||!num(r.weight,20,2000)||r.weight%5||!num(r.min,1,100)||!num(r.max,r.min,100)||!num(r.rir,0,10))fail('추천 세트 형식');
- keys.add(r.key);actual(r.actual);
+ keys.add(r.key);actual(r.actual,['warm1','warm2','warm3'].includes(r.key));
  }
  if(e.day===6&&e.sets.length)fail('자유운동에 3대 추천 세트 포함');
  if(e.day<6){const mode=DAYS[e.day].mode;
@@ -47,7 +47,7 @@ export function validate(p){
  if(pr&&e.prResult==='success'&&(!pr.actual.done||!pr.actual.technique||pr.actual.reps<1||pr.actual.weight!==pr.weight))fail('PR 성공 조건');
  if(pr&&e.prResult==='failure'&&(!pr.actual.done||pr.actual.weight!==pr.weight))fail('PR 실패 세트 기록');
  if(!Array.isArray(e.aux)||e.aux.length>100)fail('보조운동');
- for(const a of e.aux){if(!str(a.id,100)||!str(a.name,200)||!a.name.trim()||!Array.isArray(a.sets)||a.sets.length>100)fail('보조운동 형식');a.sets.forEach(actual);}
+ for(const a of e.aux){if(!str(a.id,100)||!str(a.name,200)||!a.name.trim()||!Array.isArray(a.sets)||a.sets.length>100)fail('보조운동 형식');if(a.parts!==undefined&&(!Array.isArray(a.parts)||new Set(a.parts).size!==a.parts.length||a.parts.some(p=>!PARTS.includes(p))))fail('보조운동 부위');a.sets.forEach(s=>actual(s));}
  if(!e.sets.some(r=>r.actual.done)&&!e.aux.some(x=>x.sets.some(a=>a.done)))fail('완료된 세트가 없습니다');
  }
  return p;
