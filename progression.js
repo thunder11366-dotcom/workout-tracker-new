@@ -1,7 +1,7 @@
 import {uuid} from './crypto-utils.js';
-export const APP_VERSION='1.1.0';
+export const APP_VERSION='1.1.1';
 export const DATA_SCHEMA_VERSION=1;
-export const CACHE_VERSION='app-shell-3';
+export const CACHE_VERSION='app-shell-4';
 export const RULE_VERSION=1;
 export const LIFTS=['squat','bench','dead'];
 export const NAMES={squat:'스쿼트',bench:'벤치프레스',dead:'데드리프트'};
