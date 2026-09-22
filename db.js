@@ -5,6 +5,11 @@ import {buildReports} from './reports.js';
 // Stable names: NEVER derive the database name/version from APP_VERSION.
 export const DB_NAME='kovea-workout-ledger';
 const MARKER='kovea-workout-used',MIRROR='kovea-workout-emergency';
+export const SNAPSHOT_LIMIT=10;
+function trimSnapshots(store){
+ const rows=[],cursor=store.openCursor();cursor.onsuccess=()=>{const c=cursor.result;if(c){rows.push({key:c.primaryKey,revision:c.value.record?.revision||0,date:c.value.createdAt||'',order:rows.length});c.continue();return;}
+ rows.sort((a,b)=>b.revision-a.revision||b.date.localeCompare(a.date)||b.order-a.order).slice(SNAPSHOT_LIMIT).forEach(r=>store.delete(r.key));};
+}
 export class RecoveryError extends Error{}
 const req=r=>new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
 const committed=t=>new Promise((resolve,reject)=>{t.oncomplete=resolve;t.onabort=()=>reject(t.error||new Error('transaction aborted'));t.onerror=()=>{};});
@@ -60,6 +65,7 @@ export class Ledger{
  tx.objectStore('ledger').put(sealed,'root');
  tx.objectStore('meta').put({revision:sealed.revision,hash:sealed.hash,savedAt:now},'witness');
  if(clearDraft)tx.objectStore('drafts').delete('active');
+ trimSnapshots(tx.objectStore('snapshots'));
  };
  try{await done;}catch(e){if(conflict)throw new Error('다른 탭에서 기록이 변경되었습니다. 새로고침 후 다시 확인하세요. 입력 중인 값은 현재 화면에 남아 있습니다.');throw e;}
  try{const readBack=await verify(await this.readRoot());if(readBack.hash!==sealed.hash||readBack.revision!==sealed.revision)throw new Error('저장 후 검증 불일치');this.record=readBack;}
@@ -70,7 +76,7 @@ export class Ledger{
  }
  async upsert(event){if(!this.record)throw new Error('원본 미확인');const p=structuredClone(this.record.payload),i=p.events.findIndex(e=>e.id===event.id);if(i<0)p.events.push({...event,seq:Math.max(0,...p.events.map(x=>x.seq))+1});else p.events[i]={...event,seq:p.events[i].seq};return this.write(p,i<0?'운동/수동 변경 저장':'과거 기록 수정',this.record.revision,false,event.type==='workout');}
  async remove(id){const p=structuredClone(this.record.payload);p.events=p.events.filter(e=>e.id!==id);return this.write(p,'과거 기록 삭제');}
- async snapshot(reason){if(!this.db)throw new Error('DB 연결 없음');const record=await this.readRoot();if(!record)return;const t=this.db.transaction('snapshots','readwrite'),done=committed(t);t.objectStore('snapshots').put({createdAt:new Date().toISOString(),reason,record},uuid());await done;}
+ async snapshot(reason){if(!this.db)throw new Error('DB 연결 없음');const record=await this.readRoot();if(!record)return;const t=this.db.transaction('snapshots','readwrite'),done=committed(t);t.objectStore('snapshots').put({createdAt:new Date().toISOString(),reason,record},uuid());trimSnapshots(t.objectStore('snapshots'));await done;}
  async snapshots(){if(!this.db)return [];const t=this.db.transaction('snapshots','readonly'),done=committed(t),r=await req(t.objectStore('snapshots').getAll());await done;return r.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));}
  async importPreview(text){await this.snapshot('JSON 불러오기 전 원본 보존');if(text.length>40*1024*1024)throw new Error('JSON 40MB 제한');const raw=JSON.parse(text);if(raw.format!=='kovea-workout-backup'||!raw.record)throw new Error('이 앱의 JSON 백업 형식이 아닙니다.');try{await verify(raw.record);}catch(e){throw new Error('백업 불러오기 거부: '+e.message);}return raw.record.payload;}
  async restore(payload,expectedRecord=undefined){if(!this.db)throw new Error('DB 연결을 먼저 복구해야 합니다.');const root=expectedRecord===undefined?await this.readRoot():expectedRecord;return this.write(payload,'사용자 확인 복구',root?.revision??null,true,true,JSON.stringify(root??null));}

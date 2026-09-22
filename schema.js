@@ -16,6 +16,10 @@ export function validate(p){
  if(p.baseline.settings.units!=='kg'||p.baseline.settings.step!==5||p.baseline.settings.bar!==20)fail('기본 설정');
  for(const l of LIFTS)if(!num(p.baseline.oneRM?.[l],20,1000)||p.baseline.oneRM[l]%5)fail('초기 1RM');
  if(!Array.isArray(p.events)||p.events.length>100000)fail('이벤트 목록');
+ if(p.exerciseSettings!==undefined){
+ if(!Array.isArray(p.exerciseSettings)||p.exerciseSettings.length>10000)fail('종목 설정');
+ const catalogKeys=new Set();for(const a of p.exerciseSettings){if(!obj(a)||!str(a.key,1000)||!a.key||catalogKeys.has(a.key)||!str(a.name,200)||!a.name.trim()||typeof a.hidden!=='boolean'||!(a.key.startsWith('aux:')||LIFTS.some(l=>a.key==='main:'+l)))fail('종목 설정 형식');catalogKeys.add(a.key);}
+ }
  const ids=new Set(),seqs=new Set();
  for(const e of p.events){
  if(!obj(e)||!str(e.id,100)||!e.id||ids.has(e.id)||!Number.isSafeInteger(e.seq)||e.seq<1||seqs.has(e.seq)||!date(e.date)||!str(e.createdAt)||!str(e.note))fail('이벤트 식별자/순서/날짜/메모');
@@ -47,7 +51,7 @@ export function validate(p){
  if(pr&&e.prResult==='success'&&(!pr.actual.done||!pr.actual.technique||pr.actual.reps<1||pr.actual.weight!==pr.weight))fail('PR 성공 조건');
  if(pr&&e.prResult==='failure'&&(!pr.actual.done||pr.actual.weight!==pr.weight))fail('PR 실패 세트 기록');
  if(!Array.isArray(e.aux)||e.aux.length>100)fail('보조운동');
- for(const a of e.aux){if(!str(a.id,100)||!str(a.name,200)||!a.name.trim()||!Array.isArray(a.sets)||a.sets.length>100)fail('보조운동 형식');if(a.parts!==undefined&&(!Array.isArray(a.parts)||new Set(a.parts).size!==a.parts.length||a.parts.some(p=>!PARTS.includes(p))))fail('보조운동 부위');a.sets.forEach(s=>actual(s));}
+ for(const a of e.aux){if(!str(a.id,100)||!str(a.name,200)||!a.name.trim()||!Array.isArray(a.sets)||a.sets.length>100)fail('보조운동 형식');if(a.exerciseKey!==undefined&&(!str(a.exerciseKey,1000)||!a.exerciseKey.startsWith('aux:')))fail('종목 식별자');if(a.parts!==undefined&&(!Array.isArray(a.parts)||new Set(a.parts).size!==a.parts.length||a.parts.some(p=>!PARTS.includes(p))))fail('보조운동 부위');a.sets.forEach(s=>actual(s));}
  if(!e.sets.some(r=>r.actual.done)&&!e.aux.some(x=>x.sets.some(a=>a.done)))fail('완료된 세트가 없습니다');
  }
  return p;

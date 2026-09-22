@@ -4,3 +4,7 @@ button,label,h1,h2,h3{word-break:keep-all;overflow-wrap:break-word}
 #nav button{padding:8px 5px;white-space:nowrap}
 /* Reports remain readable on narrow phones and in shared text. */
 .report-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+
+#nav {grid-template-columns:repeat(5,1fr)}
+#nav button{padding-left:6px;padding-right:6px}
+.exercise-results{display:flex;gap:8px;flex-wrap:wrap}

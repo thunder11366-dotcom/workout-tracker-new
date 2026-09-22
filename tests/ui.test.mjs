@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {Window} from 'happy-dom';
+import {indexedDB} from 'fake-indexeddb';
+import {Ledger} from '../db.js';
+import {historyPlan} from '../history-reference.js';
+import {emptyActual} from '../progression.js';
+test('exercise page rename/hide/restore, RIR session and renamed search work through UI',async()=>{
+ const win=new Window({url:'https://example.test/workout/'});
+ for(const [key,value] of Object.entries({window:win,document:win.document,localStorage:win.localStorage,indexedDB,location:win.location,navigator:win.navigator,BroadcastChannel:undefined}))Object.defineProperty(globalThis,key,{value,configurable:true});
+ const l=new Ledger();await l.open();await l.initialize();
+ const e={id:'workout',seq:0,type:'workout',ruleVersion:2,createdAt:'2026-01-01',date:'2026-01-01',day:0,parts:[],condition:{overall:3,fatigue:3,sleep:3,soreness:1,note:''},oneRMAtStart:l.record.payload.baseline.oneRM,sets:historyPlan(0),aux:[{id:'a',name:'내전근',sets:[{...emptyActual(),done:true,weight:40,reps:12,rir:2}]}],prResult:'none',note:''};e.sets[4].actual={...emptyActual(),done:true,weight:70,reps:6,rir:1};await l.upsert(e);
+ win.document.write((await readFile(new URL('../index.html',import.meta.url),'utf8')).replace(/<script[^>]*>[\s\S]*?<\/script>/g,''));
+ await import('../app.js');
+ const settle=async()=>{await new Promise(r=>setTimeout(r,30));};const click=async s=>{const el=win.document.querySelector(s);assert.ok(el,s);el.click();await settle();};
+ await settle();await click('[data-nav="exercises"]');assert.match(win.document.querySelector('#app').textContent,/종목별 기록/);
+ await click('[data-exercise-view="aux:내전근"]');assert.match(win.document.querySelector('#app').textContent,/40kg × 12회/);
+ win.document.querySelector('#exercise-rename').value='내전근 머신';await click('[data-action="rename-exercise"]');assert.match(win.document.querySelector('h2').textContent,/내전근 머신/);
+ await click('[data-action="hide-exercise"]');await click('#confirm-ok');assert.ok(win.document.querySelector('[data-action="restore-exercise"]'));
+ await click('[data-action="restore-exercise"]');
+ await click('[data-nav="home"]');await click('[data-day="0"]');assert.match(win.document.querySelector('#app').textContent,/권장 RIR 1/);assert.ok(win.document.querySelector('[data-field="aux.0.name"]').value==='내전근 머신');assert.match(win.document.querySelector('[data-aux-reference="0:0"]').textContent,/40kg × 12회/);
+ await click('[data-action="add-exercise"]');const search=win.document.querySelector('#exercise-search');search.value='내전근';search.dispatchEvent(new win.Event('input',{bubbles:true}));await click('[data-exercise-key="aux:내전근"]');assert.equal(win.document.querySelectorAll('[data-field$=".name"]').length,2);assert.match(win.document.querySelector('[data-aux-reference="1:0"]').textContent,/40kg × 12회/);
+ assert.equal(win.document.querySelector('[data-field="sets.0.actual.rir"]').value,'');
+ l.db.close();await win.happyDOM.close();
+});
