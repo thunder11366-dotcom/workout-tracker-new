@@ -23,7 +23,7 @@ export function validate(p){
  if(e.type==='manual_1rm_adjustment'){
  if(!LIFTS.includes(e.lift)||!num(e.value,20,1000)||e.value%5)fail('수동 1RM');continue;
  }
- if(e.type!=='workout'||!Number.isInteger(e.day)||e.day<0||e.day>6||e.ruleVersion!==1)fail('운동/규칙 버전');
+ if(e.type!=='workout'||!Number.isInteger(e.day)||e.day<0||e.day>6||![1,2].includes(e.ruleVersion))fail('운동/규칙 버전');
  if(!Array.isArray(e.parts)||new Set(e.parts).size!==e.parts.length||e.parts.some(x=>!PARTS.includes(x))||(e.day===6&&!e.parts.length))fail('운동 부위');
  if(!obj(e.condition)||!str(e.condition.note))fail('컨디션');
  for(const k of ['overall','fatigue','sleep','soreness'])if(!num(e.condition[k],1,5)||!Number.isInteger(e.condition[k]))fail('컨디션 척도');
@@ -32,7 +32,7 @@ export function validate(p){
  if(!Array.isArray(e.sets)||e.sets.length>30)fail('추천 세트');
  const keys=new Set();
  for(const r of e.sets){
- if(!str(r.key,50)||keys.has(r.key)||!str(r.name,200)||!str(r.purpose,1000)||!num(r.weight,20,2000)||r.weight%5||!num(r.min,1,100)||!num(r.max,r.min,100)||!num(r.rir,0,10))fail('추천 세트 형식');
+ if(!str(r.key,50)||keys.has(r.key)||!str(r.name,200)||!str(r.purpose,1000)||(e.ruleVersion===2?!(r.weight===null&&r.min===null&&r.max===null&&r.rir===null):(!num(r.weight,20,2000)||r.weight%5||!num(r.min,1,100)||!num(r.max,r.min,100)||!num(r.rir,0,10))))fail('추천 세트 형식');
  keys.add(r.key);actual(r.actual,['warm1','warm2','warm3'].includes(r.key));
  }
  if(e.day===6&&e.sets.length)fail('자유운동에 3대 추천 세트 포함');

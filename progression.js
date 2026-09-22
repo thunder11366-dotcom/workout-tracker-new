@@ -1,7 +1,7 @@
 import {uuid} from './crypto-utils.js';
-export const APP_VERSION='1.1.1';
+export const APP_VERSION='1.2.0';
 export const DATA_SCHEMA_VERSION=1;
-export const CACHE_VERSION='app-shell-4';
+export const CACHE_VERSION='app-shell-5';
 export const RULE_VERSION=1;
 export const LIFTS=['squat','bench','dead'];
 export const NAMES={squat:'스쿼트',bench:'벤치프레스',dead:'데드리프트'};
@@ -57,6 +57,7 @@ export function replay(base,events){
  state.cycleCount++;state.next=(e.day+1)%6;
  const d=DAYS[e.day],s=state.lifts[d.lift];
  const out={message:'중량 유지',e1RM:null};state.outcomes[e.id]=out;
+ if(e.ruleVersion===2){out.message='직전 기록과 비교하여 운동 완료';out.e1RM=estimate(e.sets.find(r=>r.key==='scale')?.actual);s.pendingPR=null;s.ready=0;continue;}
  if(d.mode==='hypertrophy'){
  const expected=plan(e.day,state).filter(r=>r.key.startsWith('hyper'));
  const pass=expected.every(r=>{const a=e.sets.find(x=>x.key===r.key)?.actual;return a?.done&&a.technique&&a.weight>=r.weight&&a.reps>=r.max&&a.rir>=r.rir;});
